@@ -15,10 +15,19 @@ contextBridge.exposeInMainWorld('api', {
   addImage: (arrayBuffer, ext) => ipcRenderer.invoke('ptf:addImage', arrayBuffer, ext),
   getImage: (ref) => ipcRenderer.invoke('ptf:getImage', ref),
 
+  // スナップショット
+  saveSnapshot: (label) => ipcRenderer.invoke('ptf:saveSnapshot', label),
+  restoreSnapshot: (snapshotId) => ipcRenderer.invoke('ptf:restoreSnapshot', snapshotId),
+  deleteSnapshot: (snapshotId) => ipcRenderer.invoke('ptf:deleteSnapshot', snapshotId),
+
   // イベント受信
   onPtfLoaded: (cb) => ipcRenderer.on('ptf:loaded', (_, doc) => cb(doc)),
   onMenuUndo: (cb) => ipcRenderer.on('menu:undo', () => cb()),
   onMenuRedo: (cb) => ipcRenderer.on('menu:redo', () => cb()),
+
+  // HTML書き出し・マージ
+  exportHtml: () => ipcRenderer.invoke('ptf:exportHtml'),
+  mergeFromPtf: () => ipcRenderer.invoke('ptf:mergeFromPtf'),
 
   // リスナー解除
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),

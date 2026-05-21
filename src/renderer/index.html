@@ -14,7 +14,10 @@
         <button id="btn-new-page" title="ページ追加">＋ ページ</button>
       </div>
       <div id="tag-filter">
-        <div id="tag-filter-label">タグで絞り込み</div>
+        <div id="tag-filter-header">
+          <span id="tag-filter-label">タグで絞り込み</span>
+          <button id="btn-manage-tags" title="タグを管理">⚙</button>
+        </div>
         <div id="tag-list"></div>
       </div>
       <ul id="page-list"></ul>
@@ -23,18 +26,61 @@
     <!-- メインエリア -->
     <main id="main">
       <div id="toolbar">
+        <button id="btn-undo" title="元に戻す (Ctrl+Z)" disabled>↩</button>
+        <button id="btn-redo" title="やり直す (Ctrl+Y)" disabled>↪</button>
+        <span class="toolbar-sep"></span>
         <button id="btn-add-text">＋ 文章</button>
         <button id="btn-add-image">＋ 写真</button>
         <span id="page-title-display"></span>
+        <button id="btn-history" title="バージョン履歴">履歴</button>
+        <button id="btn-export-html" title="HTMLとして書き出す">書き出し</button>
+        <button id="btn-merge-ptf" title=".ptfファイルを取り込む">取り込み</button>
         <button id="btn-save" title="保存 (Ctrl+S)">保存</button>
       </div>
       <div id="canvas">
         <div id="empty-state">
           <p>左のパネルでページを選択するか、「＋ ページ」で新しいページを作成してください。</p>
         </div>
+        <div id="page-header" style="display:none;">
+          <div id="page-tags-area"></div>
+        </div>
         <ul id="block-list"></ul>
       </div>
     </main>
+  </div>
+
+  <!-- バージョン履歴モーダル -->
+  <div id="history-modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h2>バージョン履歴</h2>
+        <button id="history-modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="snapshot-save-row">
+          <input id="snapshot-label-input" type="text" placeholder="スナップショット名（任意）" maxlength="50">
+          <button id="btn-save-snapshot">スナップショット保存</button>
+        </div>
+        <div id="snapshot-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- タグ管理モーダル -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>タグ管理</h2>
+        <button id="modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="tag-master-list"></div>
+        <div class="tag-add-row">
+          <input id="new-tag-input" type="text" placeholder="新しいタグ名" maxlength="30">
+          <button id="btn-add-tag">追加</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="vendor/purify.min.js"></script>

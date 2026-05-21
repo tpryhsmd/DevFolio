@@ -5,7 +5,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "cmd /C \"set ELECTRON_RUN_AS_NODE=&& node node_modules/electron/cli.js .\"",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
@@ -21,18 +22,38 @@
   "build": {
     "appId": "com.company.devportfolio",
     "productName": "技術ポートフォリオ",
+    "copyright": "Copyright © 2026",
+    "files": [
+      "src/**/*",
+      "!src/renderer/vendor/.gitkeep"
+    ],
     "fileAssociations": [
       {
         "ext": "ptf",
         "name": "Portfolio File",
+        "description": "技術ポートフォリオファイル",
         "role": "Editor"
       }
     ],
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build-resources"
     },
     "win": {
-      "target": "nsis"
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build-resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "技術ポートフォリオ",
+      "installerLanguages": ["ja"]
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build-resources/icon.icns"
     }
   }
 }

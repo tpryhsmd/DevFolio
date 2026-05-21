@@ -101,69 +101,49 @@ class PtfManager {
 
   // --- HTML書き出し ---
 
-  exportHtml(outputDir) {
+  exportHtml(outputDir, pageIds) {
     if (!this._doc) throw new Error('ドキュメントが存在しません');
 
     const doc = this._doc;
-    const pages = (doc.pages || []).slice().sort((a, b) => a.order - b.order);
+    const allPages = (doc.pages || []).slice().sort((a, b) => a.order - b.order);
 
-    // タグ別インデックスを構築
+    // pageIds が指定された場合はフィルタリング（順序維持）
+    const pages = pageIds && pageIds.length > 0
+      ? allPages.filter((p) => pageIds.includes(p.id))
+      : allPages;
+
+    if (pages.length === 0) throw new Error('書き出すページがありません');
+
+    // タグ別インデックスを構築（対象ページのみ）
     const tagMap = {};
     (doc.tags || []).forEach((tag) => {
-      tagMap[tag] = pages.filter((p) => p.tags.includes(tag));
+      const tagged = pages.filter((p) => p.tags.includes(tag));
+      if (tagged.length > 0) tagMap[tag] = tagged;
     });
 
-    // 画像はoutputDir/imagesにコピー
+    // 使用画像のみimagesディレクトリにコピー
+    const usedRefs = new Set();
+    pages.forEach((page) => {
+      (page.blocks || []).forEach((block) => {
+        if (block.type === 'image' && block.data.imageRef) {
+          usedRefs.add(block.data.imageRef);
+        }
+      });
+    });
+
     const imgDir = path.join(outputDir, 'images');
     if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
-    for (const [ref, { buffer, ext }] of this._imagePool._pool) {
-      fs.writeFileSync(path.join(imgDir, `${ref}.${ext}`), buffer);
+    for (const ref of usedRefs) {
+      const entry = this._imagePool.get(ref);
+      if (entry) {
+        fs.writeFileSync(path.join(imgDir, `${ref}.${entry.ext}`), entry.buffer);
+      }
     }
 
-    // ページHTMLを生成
-    pages.forEach((page) => {
-      const blocksHtml = (page.blocks || [])
-        .slice()
-        .sort((a, b) => a.order - b.order)
-        .map((block) => {
-          if (block.type === 'text') {
-            return `<div class="block block-text">${block.data.content || ''}</div>`;
-          } else if (block.type === 'image') {
-            const ref = block.data.imageRef || '';
-            const entry = ref ? this._imagePool.get(ref) : null;
-            const imgTag = entry
-              ? `<img src="images/${ref}.${entry.ext}" alt="${_esc(block.data.alt || '')}">`
-              : '<div class="img-placeholder">（画像なし）</div>';
-            const caption = block.data.caption
-              ? `<p class="caption">${_esc(block.data.caption)}</p>`
-              : '';
-            return `<div class="block block-image">${imgTag}${caption}</div>`;
-          }
-          return '';
-        })
-        .join('\n');
-
-      const pageTags = (page.tags || [])
-        .map((t) => `<span class="tag">${_esc(t)}</span>`)
-        .join('');
-
-      const html = buildPageHtml({
-        title: page.title,
-        tags: pageTags,
-        blocks: blocksHtml,
-        tocPages: pages,
-        tagMap,
-        docTitle: doc.meta?.title || '技術ポートフォリオ',
-        currentPageId: page.id,
-      });
-
-      const filename = `${_safeFilename(page.id)}.html`;
-      fs.writeFileSync(path.join(outputDir, filename), html, 'utf-8');
-    });
-
-    // インデックスページ（page[0]へリダイレクト or 一覧）
-    const indexHtml = buildIndexHtml(pages, doc.meta?.title || '技術ポートフォリオ');
-    fs.writeFileSync(path.join(outputDir, 'index.html'), indexHtml, 'utf-8');
+    // 全ページを1つのHTMLにまとめて出力
+    const docTitle = doc.meta?.title || '技術ポートフォリオ';
+    const html = buildSingleHtml({ pages, tagMap, docTitle, imagePool: this._imagePool });
+    fs.writeFileSync(path.join(outputDir, 'index.html'), html, 'utf-8');
 
     return { pageCount: pages.length, outputDir };
   }
@@ -256,49 +236,71 @@ function _safeFilename(id) {
   return id.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
-function buildTocHtml(pages, tagMap, currentPageId) {
-  let html = '';
+function buildSingleHtml({ pages, tagMap, docTitle, imagePool }) {
+  // サイドナビ（アンカーリンク）
   const tagNames = Object.keys(tagMap);
-
-  // タグ別セクション
+  let tocHtml = '';
   if (tagNames.length > 0) {
     tagNames.forEach((tag) => {
       const tagged = tagMap[tag];
-      if (tagged.length === 0) return;
-      html += `<li class="toc-tag-header">${_esc(tag)}</li>`;
+      tocHtml += `<li class="toc-tag-header">${_esc(tag)}</li>`;
       tagged.forEach((p) => {
-        const active = p.id === currentPageId ? ' class="toc-active"' : '';
-        html += `<li><a href="${_safeFilename(p.id)}.html"${active}>${_esc(p.title)}</a></li>`;
+        tocHtml += `<li><a href="#${_esc(p.id)}">${_esc(p.title)}</a></li>`;
       });
     });
-
-    // タグなしページ
     const untagged = pages.filter((p) => p.tags.length === 0);
     if (untagged.length > 0) {
-      html += `<li class="toc-tag-header">（未分類）</li>`;
+      tocHtml += `<li class="toc-tag-header">（未分類）</li>`;
       untagged.forEach((p) => {
-        const active = p.id === currentPageId ? ' class="toc-active"' : '';
-        html += `<li><a href="${_safeFilename(p.id)}.html"${active}>${_esc(p.title)}</a></li>`;
+        tocHtml += `<li><a href="#${_esc(p.id)}">${_esc(p.title)}</a></li>`;
       });
     }
   } else {
     pages.forEach((p) => {
-      const active = p.id === currentPageId ? ' class="toc-active"' : '';
-      html += `<li><a href="${_safeFilename(p.id)}.html"${active}>${_esc(p.title)}</a></li>`;
+      tocHtml += `<li><a href="#${_esc(p.id)}">${_esc(p.title)}</a></li>`;
     });
   }
 
-  return html;
-}
+  // 各ページのコンテンツセクション
+  const sectionsHtml = pages.map((page) => {
+    const blocksHtml = (page.blocks || [])
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map((block) => {
+        if (block.type === 'text') {
+          return `<div class="block block-text">${block.data.content || ''}</div>`;
+        } else if (block.type === 'image') {
+          const ref = block.data.imageRef || '';
+          const entry = ref ? imagePool.get(ref) : null;
+          const imgTag = entry
+            ? `<img src="images/${ref}.${entry.ext}" alt="${_esc(block.data.alt || '')}">`
+            : '<div class="img-placeholder">（画像なし）</div>';
+          const caption = block.data.caption
+            ? `<p class="caption">${_esc(block.data.caption)}</p>`
+            : '';
+          return `<div class="block block-image">${imgTag}${caption}</div>`;
+        }
+        return '';
+      })
+      .join('\n');
 
-function buildPageHtml({ title, tags, blocks, tocPages, tagMap, docTitle, currentPageId }) {
-  const toc = buildTocHtml(tocPages, tagMap, currentPageId);
+    const pageTags = (page.tags || [])
+      .map((t) => `<span class="tag">${_esc(t)}</span>`)
+      .join('');
+
+    return `<section class="page-section" id="${_esc(page.id)}">
+  <h2 class="page-title">${_esc(page.title)}</h2>
+  <div class="page-tags">${pageTags}</div>
+  ${blocksHtml}
+</section>`;
+  }).join('\n');
+
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${_esc(title)} — ${_esc(docTitle)}</title>
+<title>${_esc(docTitle)}</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Meiryo','Segoe UI',sans-serif;font-size:15px;color:#333;background:#f5f5f5;display:flex;min-height:100vh}
@@ -307,9 +309,10 @@ nav h1{font-size:13px;color:#aaa;padding:0 16px 12px;border-bottom:1px solid #44
 nav ul{list-style:none;padding:8px 0}
 nav ul li a{display:block;padding:6px 16px;color:#bbb;text-decoration:none;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 nav ul li a:hover{background:#3a3a3a;color:#fff}
-nav ul li a.toc-active{background:#3a3a3a;border-left:3px solid #4a90d9;color:#fff}
 .toc-tag-header{font-size:10px;color:#666;padding:10px 16px 2px;text-transform:uppercase;letter-spacing:.05em}
-main{flex:1;padding:32px 24px;max-width:860px}
+.content{flex:1;padding:32px 24px;max-width:860px}
+.page-section{margin-bottom:48px;padding-bottom:40px;border-bottom:1px solid #ddd}
+.page-section:last-child{border-bottom:none}
 h2.page-title{font-size:22px;font-weight:bold;color:#222;margin-bottom:8px}
 .page-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}
 .tag{background:#e8e8e8;color:#666;padding:2px 10px;border-radius:12px;font-size:12px}
@@ -324,30 +327,11 @@ h2.page-title{font-size:22px;font-weight:bold;color:#222;margin-bottom:8px}
 <body>
 <nav>
   <h1>${_esc(docTitle)}</h1>
-  <ul>${toc}</ul>
+  <ul>${tocHtml}</ul>
 </nav>
-<main>
-  <h2 class="page-title">${_esc(title)}</h2>
-  <div class="page-tags">${tags}</div>
-  ${blocks}
-</main>
-</body>
-</html>`;
-}
-
-function buildIndexHtml(pages, docTitle) {
-  const links = pages
-    .map((p) => `<li><a href="${_safeFilename(p.id)}.html">${_esc(p.title)}</a></li>`)
-    .join('\n');
-  return `<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=${pages.length ? _safeFilename(pages[0].id) + '.html' : ''}">
-<title>${_esc(docTitle)}</title>
-</head>
-<body>
-<ul>${links}</ul>
+<div class="content">
+${sectionsHtml}
+</div>
 </body>
 </html>`;
 }

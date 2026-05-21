@@ -176,7 +176,7 @@ async function handleSaveAs() {
   }
 }
 
-async function handleExportHtml() {
+async function handleExportHtml(pageIds) {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     title: 'HTML書き出し先フォルダを選択',
     buttonLabel: 'このフォルダに書き出す',
@@ -184,7 +184,7 @@ async function handleExportHtml() {
   });
   if (canceled || !filePaths?.[0]) return;
   try {
-    const result = ptfManager.exportHtml(filePaths[0]);
+    const result = ptfManager.exportHtml(filePaths[0], pageIds);
     const { response } = await dialog.showMessageBox(mainWindow, {
       type: 'info',
       buttons: ['フォルダを開く', '閉じる'],
@@ -259,7 +259,7 @@ app.whenReady().then(() => {
   });
 
   // Phase 4のIPC（メニューからも呼べるようUIからも残す）
-  ipcMain.handle('ptf:exportHtml', () => handleExportHtml());
+  ipcMain.handle('ptf:exportHtml', (_, pageIds) => handleExportHtml(pageIds));
   ipcMain.handle('ptf:mergeFromPtf', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: '取り込む .ptf ファイルを選択',

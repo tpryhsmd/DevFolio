@@ -49,6 +49,27 @@
     </main>
   </div>
 
+  <!-- HTML書き出し対象選択モーダル -->
+  <div id="export-modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h2>書き出すページを選択</h2>
+        <button id="export-modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button id="export-select-all" style="font-size:12px;padding:4px 10px;">すべて選択</button>
+          <button id="export-deselect-all" style="font-size:12px;padding:4px 10px;">すべて解除</button>
+        </div>
+        <div id="export-page-list" style="max-height:320px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:4px;padding:4px 0;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+          <button id="export-modal-cancel" style="padding:6px 14px;border:1px solid #ccc;border-radius:4px;font-size:13px;cursor:pointer;">キャンセル</button>
+          <button id="export-modal-ok" style="padding:6px 14px;background:#2980b9;color:#fff;border:none;border-radius:4px;font-size:13px;cursor:pointer;">書き出す</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- バージョン履歴モーダル -->
   <div id="history-modal-overlay" class="modal-overlay" style="display:none;">
     <div class="modal modal-wide">
@@ -78,6 +99,38 @@
         <div class="tag-add-row">
           <input id="new-tag-input" type="text" placeholder="新しいタグ名" maxlength="30">
           <button id="btn-add-tag">追加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- テキスト入力モーダル（prompt代替） -->
+  <div id="input-modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal" style="width:360px;">
+      <div class="modal-header">
+        <h2 id="input-modal-title">入力</h2>
+        <button id="input-modal-cancel" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="tag-add-row" style="padding-top:0;border-top:none;">
+          <input id="input-modal-field" type="text" maxlength="100" style="flex:1;">
+          <button id="input-modal-ok">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 確認モーダル（confirm代替） -->
+  <div id="confirm-modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal" style="width:360px;">
+      <div class="modal-header">
+        <h2 id="confirm-modal-title">確認</h2>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-modal-msg" style="font-size:13px;color:#444;padding:4px 0 12px;"></p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="confirm-modal-cancel" class="modal-close-btn" style="padding:6px 14px;border:1px solid #ccc;border-radius:4px;font-size:13px;">キャンセル</button>
+          <button id="confirm-modal-ok" style="padding:6px 14px;background:#c0392b;color:#fff;border:none;border-radius:4px;font-size:13px;cursor:pointer;">削除</button>
         </div>
       </div>
     </div>

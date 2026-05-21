@@ -66,6 +66,69 @@ window.api.onPtfLoaded((doc) => {
 window.api.onMenuUndo(() => undo());
 window.api.onMenuRedo(() => redo());
 
+// --- prompt/confirm 代替モーダル ---
+
+function showInputModal(title, defaultValue = '') {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('input-modal-overlay');
+    const titleEl = document.getElementById('input-modal-title');
+    const field = document.getElementById('input-modal-field');
+    const okBtn = document.getElementById('input-modal-ok');
+    const cancelBtn = document.getElementById('input-modal-cancel');
+
+    titleEl.textContent = title;
+    field.value = defaultValue;
+    overlay.style.display = 'flex';
+    field.focus();
+    field.select();
+
+    function finish(value) {
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      field.removeEventListener('keydown', onKey);
+      resolve(value);
+    }
+    function onOk() { finish(field.value); }
+    function onCancel() { finish(null); }
+    function onKey(e) {
+      if (e.key === 'Enter') finish(field.value);
+      if (e.key === 'Escape') finish(null);
+    }
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    field.addEventListener('keydown', onKey);
+  });
+}
+
+function showConfirmModal(message, okLabel = '削除', okColor = '#c0392b') {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('confirm-modal-overlay');
+    const msgEl = document.getElementById('confirm-modal-msg');
+    const okBtn = document.getElementById('confirm-modal-ok');
+    const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+    msgEl.textContent = message;
+    okBtn.textContent = okLabel;
+    okBtn.style.background = okColor;
+    overlay.style.display = 'flex';
+    okBtn.focus();
+
+    function finish(value) {
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      resolve(value);
+    }
+    function onOk() { finish(true); }
+    function onCancel() { finish(false); }
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
 // --- ツールバーボタン ---
 
 document.getElementById('btn-save').addEventListener('click', () => window.api.save());
@@ -75,7 +138,7 @@ document.getElementById('btn-add-image').addEventListener('click', pickImageAndA
 document.getElementById('btn-undo').addEventListener('click', undo);
 document.getElementById('btn-redo').addEventListener('click', redo);
 document.getElementById('btn-history').addEventListener('click', openHistoryModal);
-document.getElementById('btn-export-html').addEventListener('click', exportHtml);
+document.getElementById('btn-export-html').addEventListener('click', showExportModal);
 document.getElementById('btn-merge-ptf').addEventListener('click', mergeFromPtf);
 document.getElementById('history-modal-close').addEventListener('click', closeHistoryModal);
 document.getElementById('history-modal-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeHistoryModal(); });
@@ -89,8 +152,8 @@ document.getElementById('new-tag-input').addEventListener('keydown', (e) => { if
 
 // --- ページ操作 ---
 
-function addPage() {
-  const title = prompt('ページタイトルを入力してください', '新しいページ');
+async function addPage() {
+  const title = await showInputModal('ページタイトルを入力', '新しいページ');
   if (title === null) return;
   const trimmed = title.trim() || '新しいページ';
   pushUndo(_doc);
@@ -107,8 +170,10 @@ function addPage() {
   render();
 }
 
-function deletePage(pageId) {
-  if (!confirm('このページを削除しますか？')) return;
+async function deletePage(pageId) {
+  const page = _doc.pages.find((p) => p.id === pageId);
+  const ok = await showConfirmModal(`「${page?.title || 'このページ'}」を削除しますか？`);
+  if (!ok) return;
   pushUndo(_doc);
   _doc.pages = _doc.pages.filter((p) => p.id !== pageId);
   if (_currentPageId === pageId) _currentPageId = _doc.pages[0]?.id || null;
@@ -116,10 +181,10 @@ function deletePage(pageId) {
   render();
 }
 
-function renamePage(pageId) {
+async function renamePage(pageId) {
   const page = _doc.pages.find((p) => p.id === pageId);
   if (!page) return;
-  const newTitle = prompt('ページ名を変更', page.title);
+  const newTitle = await showInputModal('ページ名を変更', page.title);
   if (newTitle === null) return;
   pushUndo(_doc);
   page.title = newTitle.trim() || page.title;
@@ -256,7 +321,8 @@ function renderSnapshotList() {
     restoreBtn.textContent = '復元';
     restoreBtn.className = 'snapshot-restore-btn';
     restoreBtn.onclick = async () => {
-      if (!confirm(`「${snap.label}」の状態に復元しますか？\n現在の編集内容は失われます。`)) return;
+      const ok = await showConfirmModal(`「${snap.label}」の状態に復元しますか？\n現在の編集内容は失われます。`, '復元', '#1a6bbf');
+      if (!ok) return;
       const restoredDoc = await window.api.restoreSnapshot(snap.snapshotId);
       _doc = restoredDoc;
       // 復元時はundo/redoスタックをクリア
@@ -272,7 +338,8 @@ function renderSnapshotList() {
     delBtn.textContent = '削除';
     delBtn.className = 'snapshot-del-btn';
     delBtn.onclick = async () => {
-      if (!confirm(`スナップショット「${snap.label}」を削除しますか？`)) return;
+      const ok = await showConfirmModal(`スナップショット「${snap.label}」を削除しますか？`);
+      if (!ok) return;
       await window.api.deleteSnapshot(snap.snapshotId);
       _doc = await window.api.getDocument();
       renderSnapshotList();
@@ -315,12 +382,12 @@ function addTagFromInput() {
   renderTagList();
 }
 
-function renameTag(oldName) {
-  const newName = prompt('タグ名を変更', oldName);
+async function renameTag(oldName) {
+  const newName = await showInputModal('タグ名を変更', oldName);
   if (newName === null) return;
   const trimmed = newName.trim();
   if (!trimmed || trimmed === oldName) return;
-  if (_doc.tags.includes(trimmed)) return alert('同名のタグが既に存在します');
+  if (_doc.tags.includes(trimmed)) return;
   pushUndo(_doc);
   const idx = _doc.tags.indexOf(oldName);
   _doc.tags[idx] = trimmed;
@@ -337,8 +404,9 @@ function renameTag(oldName) {
   renderPageHeader();
 }
 
-function deleteTag(name) {
-  if (!confirm(`タグ「${name}」を削除しますか？\n全ページから除去されます。`)) return;
+async function deleteTag(name) {
+  const ok = await showConfirmModal(`タグ「${name}」を削除しますか？\n全ページから除去されます。`);
+  if (!ok) return;
   pushUndo(_doc);
   _doc.tags = _doc.tags.filter((t) => t !== name);
   // 全ページへ伝播
@@ -469,14 +537,66 @@ async function resolveImageSrc(ref) {
 
 // --- HTML書き出し ---
 
-async function exportHtml() {
+function showExportModal() {
   if (!_doc || _doc.pages.length === 0) {
-    return alert('書き出すページがありません。');
+    alert('書き出すページがありません。');
+    return;
   }
-  const result = await window.api.exportHtml();
-  if (result) {
-    alert(`書き出し完了：${result.pageCount}ページ\n保存先：${result.outputDir}`);
+
+  const pages = (_doc.pages || []).slice().sort((a, b) => a.order - b.order);
+  const overlay = document.getElementById('export-modal-overlay');
+  const listEl = document.getElementById('export-page-list');
+
+  // チェックボックス一覧を生成（デフォルト全選択）
+  listEl.innerHTML = pages.map((p) => {
+    const id = `export-chk-${p.id}`;
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;">
+      <input type="checkbox" id="${id}" data-page-id="${p.id}" checked style="width:15px;height:15px;">
+      <span>${p.title || '（タイトルなし）'}</span>
+    </label>`;
+  }).join('');
+
+  overlay.style.display = 'flex';
+
+  function getCheckedIds() {
+    return Array.from(listEl.querySelectorAll('input[type="checkbox"]:checked'))
+      .map((el) => el.dataset.pageId);
   }
+
+  function close() {
+    overlay.style.display = 'none';
+    document.getElementById('export-select-all').removeEventListener('click', onSelectAll);
+    document.getElementById('export-deselect-all').removeEventListener('click', onDeselectAll);
+    document.getElementById('export-modal-ok').removeEventListener('click', onOk);
+    document.getElementById('export-modal-cancel').removeEventListener('click', onCancel);
+    document.getElementById('export-modal-close').removeEventListener('click', onCancel);
+  }
+
+  function onSelectAll() {
+    listEl.querySelectorAll('input[type="checkbox"]').forEach((el) => { el.checked = true; });
+  }
+  function onDeselectAll() {
+    listEl.querySelectorAll('input[type="checkbox"]').forEach((el) => { el.checked = false; });
+  }
+  async function onOk() {
+    const pageIds = getCheckedIds();
+    if (pageIds.length === 0) {
+      alert('1ページ以上を選択してください。');
+      return;
+    }
+    close();
+    const result = await window.api.exportHtml(pageIds);
+    if (result) {
+      alert(`書き出し完了：${result.pageCount}ページ`);
+    }
+  }
+  function onCancel() { close(); }
+
+  document.getElementById('export-select-all').addEventListener('click', onSelectAll);
+  document.getElementById('export-deselect-all').addEventListener('click', onDeselectAll);
+  document.getElementById('export-modal-ok').addEventListener('click', onOk);
+  document.getElementById('export-modal-cancel').addEventListener('click', onCancel);
+  document.getElementById('export-modal-close').addEventListener('click', onCancel);
 }
 
 // --- .ptf マージ取り込み ---

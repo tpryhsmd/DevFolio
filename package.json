@@ -1,0 +1,38 @@
+{
+  "name": "dev-portfolio",
+  "version": "1.0.0",
+  "description": "技術ポートフォリオアプリ",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "cmd /C \"set ELECTRON_RUN_AS_NODE=&& node node_modules/electron/cli.js .\"",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^26.0.0"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "dompurify": "^3.2.6",
+    "jsdom": "^26.1.0",
+    "sortablejs": "^1.15.7"
+  },
+  "build": {
+    "appId": "com.company.devportfolio",
+    "productName": "技術ポートフォリオ",
+    "fileAssociations": [
+      {
+        "ext": "ptf",
+        "name": "Portfolio File",
+        "role": "Editor"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

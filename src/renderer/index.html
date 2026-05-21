@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <title>技術ポートフォリオ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- サイドバー -->
+    <aside id="sidebar">
+      <div id="sidebar-header">
+        <button id="btn-new-page" title="ページ追加">＋ ページ</button>
+      </div>
+      <div id="tag-filter">
+        <div id="tag-filter-label">タグで絞り込み</div>
+        <div id="tag-list"></div>
+      </div>
+      <ul id="page-list"></ul>
+    </aside>
+
+    <!-- メインエリア -->
+    <main id="main">
+      <div id="toolbar">
+        <button id="btn-add-text">＋ 文章</button>
+        <button id="btn-add-image">＋ 写真</button>
+        <span id="page-title-display"></span>
+        <button id="btn-save" title="保存 (Ctrl+S)">保存</button>
+      </div>
+      <div id="canvas">
+        <div id="empty-state">
+          <p>左のパネルでページを選択するか、「＋ ページ」で新しいページを作成してください。</p>
+        </div>
+        <ul id="block-list"></ul>
+      </div>
+    </main>
+  </div>
+
+  <script src="vendor/purify.min.js"></script>
+  <script src="vendor/Sortable.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

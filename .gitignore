@@ -1,0 +1,18 @@
+# 依存パッケージ
+node_modules/
+
+# Electronビルド成果物
+release/
+app-dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# エディタ
+.vscode/
+*.suo
+*.user
+
+# ログ
+npm-debug.log*

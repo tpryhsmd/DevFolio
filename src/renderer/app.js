@@ -211,7 +211,7 @@ function addBlock(type) {
     type,
     order: page.blocks.length,
     data: type === 'text'
-      ? { content: '<p>テキストを入力してください</p>' }
+      ? { content: '' }
       : { imageRef: '', alt: '', caption: '' },
   };
   page.blocks.push(block);
@@ -584,10 +584,16 @@ function showExportModal() {
       alert('1ページ以上を選択してください。');
       return;
     }
+    // デフォルトファイル名: 単一選択時はそのページタイトル、複数時は "index"
+    let defaultName = 'index';
+    if (pageIds.length === 1) {
+      const page = _doc.pages.find((p) => p.id === pageIds[0]);
+      if (page?.title) defaultName = page.title;
+    }
     close();
-    const result = await window.api.exportHtml(pageIds);
+    const result = await window.api.exportHtml(pageIds, defaultName);
     if (result) {
-      alert(`書き出し完了：${result.pageCount}ページ`);
+      showExportToast(result);
     }
   }
   function onCancel() { close(); }
@@ -597,6 +603,33 @@ function showExportModal() {
   document.getElementById('export-modal-ok').addEventListener('click', onOk);
   document.getElementById('export-modal-cancel').addEventListener('click', onCancel);
   document.getElementById('export-modal-close').addEventListener('click', onCancel);
+}
+
+// --- 書き出し完了トースト ---
+
+let _toastTimer = null;
+
+function showExportToast(result) {
+  const toast = document.getElementById('export-toast');
+  const detail = document.getElementById('export-toast-detail');
+  const openBtn = document.getElementById('export-toast-open');
+  const closeBtn = document.getElementById('export-toast-close');
+
+  detail.textContent = `${result.pageCount}ページ — ${result.outputDir}`;
+  toast.classList.remove('hiding');
+  toast.style.display = 'flex';
+
+  function dismiss() {
+    clearTimeout(_toastTimer);
+    toast.classList.add('hiding');
+    setTimeout(() => { toast.style.display = 'none'; toast.classList.remove('hiding'); }, 200);
+  }
+
+  openBtn.onclick = () => { window.api.openPath(result.outputDir); dismiss(); };
+  closeBtn.onclick = dismiss;
+
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(dismiss, 6000);
 }
 
 // --- .ptf マージ取り込み ---
@@ -763,6 +796,7 @@ function createBlockElement(block, page) {
     const content = document.createElement('div');
     content.className = 'text-block-content';
     content.contentEditable = 'true';
+    content.setAttribute('data-placeholder', 'テキストを入力…');
     // DOMPurifyでサニタイズしてからinnerHTML設定
     content.innerHTML = DOMPurify.sanitize(block.data.content || '');
     content.onblur = () => {

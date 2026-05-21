@@ -2,8 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
   <title>技術ポートフォリオ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -61,10 +64,10 @@
           <button id="export-select-all" style="font-size:12px;padding:4px 10px;">すべて選択</button>
           <button id="export-deselect-all" style="font-size:12px;padding:4px 10px;">すべて解除</button>
         </div>
-        <div id="export-page-list" style="max-height:320px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:4px;padding:4px 0;"></div>
+        <div id="export-page-list" style="max-height:320px;overflow-y:auto;border:1px solid var(--border-default);border-radius:4px;padding:4px 0;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-          <button id="export-modal-cancel" style="padding:6px 14px;border:1px solid #ccc;border-radius:4px;font-size:13px;cursor:pointer;">キャンセル</button>
-          <button id="export-modal-ok" style="padding:6px 14px;background:#2980b9;color:#fff;border:none;border-radius:4px;font-size:13px;cursor:pointer;">書き出す</button>
+          <button id="export-modal-cancel" style="padding:6px 14px;border:1px solid var(--border-default);border-radius:4px;font-size:13px;cursor:pointer;">キャンセル</button>
+          <button id="export-modal-ok" style="padding:6px 14px;background:var(--accent);color:var(--text-inverse);border:none;border-radius:4px;font-size:13px;cursor:pointer;">書き出す</button>
         </div>
       </div>
     </div>
@@ -127,13 +130,24 @@
         <h2 id="confirm-modal-title">確認</h2>
       </div>
       <div class="modal-body">
-        <p id="confirm-modal-msg" style="font-size:13px;color:#444;padding:4px 0 12px;"></p>
+        <p id="confirm-modal-msg" style="font-size:13px;color:var(--text-primary);padding:4px 0 12px;"></p>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button id="confirm-modal-cancel" class="modal-close-btn" style="padding:6px 14px;border:1px solid #ccc;border-radius:4px;font-size:13px;">キャンセル</button>
+          <button id="confirm-modal-cancel" class="modal-close-btn" style="padding:6px 14px;border:1px solid var(--border-default);border-radius:4px;font-size:13px;">キャンセル</button>
           <button id="confirm-modal-ok" style="padding:6px 14px;background:#c0392b;color:#fff;border:none;border-radius:4px;font-size:13px;cursor:pointer;">削除</button>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 書き出し完了トースト -->
+  <div id="export-toast" class="export-toast" style="display:none;">
+    <div class="export-toast-icon">✓</div>
+    <div class="export-toast-body">
+      <div class="export-toast-title">書き出し完了</div>
+      <div class="export-toast-detail" id="export-toast-detail"></div>
+    </div>
+    <button class="export-toast-open" id="export-toast-open">フォルダを開く</button>
+    <button class="export-toast-close" id="export-toast-close">✕</button>
   </div>
 
   <script src="vendor/purify.min.js"></script>

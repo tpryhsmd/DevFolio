@@ -205,23 +205,17 @@ async function handleSaveAs() {
   }
 }
 
-async function handleExportHtml(pageIds) {
-  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-    title: 'HTML書き出し先フォルダを選択',
-    buttonLabel: 'このフォルダに書き出す',
-    properties: ['openDirectory', 'createDirectory'],
+async function handleExportHtml(pageIds, defaultName = 'index') {
+  const safeName = defaultName.replace(/[\\/:*?"<>|]/g, '_') || 'index';
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'HTMLとして書き出す',
+    defaultPath: `${safeName}.html`,
+    filters: [{ name: 'HTML Files', extensions: ['html'] }],
   });
-  if (canceled || !filePaths?.[0]) return;
+  if (canceled || !filePath) return;
   try {
-    const result = ptfManager.exportHtml(filePaths[0], pageIds);
-    const { response } = await dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      buttons: ['フォルダを開く', '閉じる'],
-      defaultId: 0,
-      message: `書き出し完了`,
-      detail: `${result.pageCount}ページを書き出しました。\n${result.outputDir}`,
-    });
-    if (response === 0) shell.openPath(result.outputDir);
+    const result = ptfManager.exportHtml(filePath, pageIds);
+    return result;
   } catch (err) {
     dialog.showErrorBox('書き出しエラー', err.message);
   }
@@ -288,7 +282,8 @@ app.whenReady().then(() => {
   });
 
   // Phase 4のIPC（メニューからも呼べるようUIからも残す）
-  ipcMain.handle('ptf:exportHtml', (_, pageIds) => handleExportHtml(pageIds));
+  ipcMain.handle('ptf:exportHtml', (_, pageIds, defaultName) => handleExportHtml(pageIds, defaultName));
+  ipcMain.handle('ptf:openPath', (_, dirPath) => shell.openPath(dirPath));
   ipcMain.handle('ptf:mergeFromPtf', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: '取り込む .ptf ファイルを選択',

@@ -101,7 +101,7 @@ class PtfManager {
 
   // --- HTML書き出し ---
 
-  exportHtml(outputDir, pageIds) {
+  exportHtml(filePath, pageIds) {
     if (!this._doc) throw new Error('ドキュメントが存在しません');
 
     const doc = this._doc;
@@ -121,6 +121,8 @@ class PtfManager {
       if (tagged.length > 0) tagMap[tag] = tagged;
     });
 
+    const outputDir = path.dirname(filePath);
+
     // 使用画像のみimagesディレクトリにコピー
     const usedRefs = new Set();
     pages.forEach((page) => {
@@ -131,19 +133,21 @@ class PtfManager {
       });
     });
 
-    const imgDir = path.join(outputDir, 'images');
-    if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
-    for (const ref of usedRefs) {
-      const entry = this._imagePool.get(ref);
-      if (entry) {
-        fs.writeFileSync(path.join(imgDir, `${ref}.${entry.ext}`), entry.buffer);
+    if (usedRefs.size > 0) {
+      const imgDir = path.join(outputDir, 'images');
+      if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
+      for (const ref of usedRefs) {
+        const entry = this._imagePool.get(ref);
+        if (entry) {
+          fs.writeFileSync(path.join(imgDir, `${ref}.${entry.ext}`), entry.buffer);
+        }
       }
     }
 
     // 全ページを1つのHTMLにまとめて出力
     const docTitle = doc.meta?.title || '技術ポートフォリオ';
     const html = buildSingleHtml({ pages, tagMap, docTitle, imagePool: this._imagePool });
-    fs.writeFileSync(path.join(outputDir, 'index.html'), html, 'utf-8');
+    fs.writeFileSync(filePath, html, 'utf-8');
 
     return { pageCount: pages.length, outputDir };
   }
@@ -302,26 +306,35 @@ function buildSingleHtml({ pages, tagMap, docTitle, imagePool }) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${_esc(docTitle)}</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Meiryo','Segoe UI',sans-serif;font-size:15px;color:#333;background:#f5f5f5;display:flex;min-height:100vh}
-nav{width:220px;min-width:180px;background:#2c2c2c;color:#ddd;padding:16px 0;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
-nav h1{font-size:13px;color:#aaa;padding:0 16px 12px;border-bottom:1px solid #444;word-break:break-all}
+:root{
+  --bg-base:#0d1117;--bg-surface:#161b22;--bg-elevated:#1c2128;--bg-card:#21262d;
+  --border-subtle:#30363d;--border-default:#444c56;
+  --text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#484f58;
+  --accent:#58a6ff;--accent-muted:#1f3a5f;
+  --font-ui:'JetBrains Mono','Cascadia Code','Consolas',monospace;
+  --font-jp:'Noto Sans JP','Yu Gothic UI','Meiryo',system-ui,sans-serif;
+}
+body{font-family:var(--font-jp);font-size:15px;color:var(--text-primary);background:var(--bg-surface);display:flex;min-height:100vh}
+nav{width:220px;min-width:180px;background:var(--bg-elevated);color:var(--text-primary);padding:16px 0;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--border-subtle)}
+nav h1{font-size:13px;font-family:var(--font-ui);color:var(--text-secondary);padding:0 16px 12px;border-bottom:1px solid var(--border-subtle);word-break:break-all}
 nav ul{list-style:none;padding:8px 0}
-nav ul li a{display:block;padding:6px 16px;color:#bbb;text-decoration:none;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-nav ul li a:hover{background:#3a3a3a;color:#fff}
-.toc-tag-header{font-size:10px;color:#666;padding:10px 16px 2px;text-transform:uppercase;letter-spacing:.05em}
+nav ul li a{display:block;padding:6px 16px;color:var(--text-secondary);text-decoration:none;font-size:13px;font-family:var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:3px solid transparent;transition:background .12s,color .12s}
+nav ul li a:hover{background:var(--bg-card);color:var(--text-primary);border-left-color:var(--accent)}
+.toc-tag-header{font-size:10px;color:var(--text-muted);font-family:var(--font-ui);padding:10px 16px 2px;letter-spacing:.05em}
 .content{flex:1;padding:32px 24px;max-width:860px}
-.page-section{margin-bottom:48px;padding-bottom:40px;border-bottom:1px solid #ddd}
+.page-section{margin-bottom:48px;padding-bottom:40px;border-bottom:1px solid var(--border-subtle)}
 .page-section:last-child{border-bottom:none}
-h2.page-title{font-size:22px;font-weight:bold;color:#222;margin-bottom:8px}
+h2.page-title{font-size:22px;font-weight:700;color:var(--text-primary);font-family:var(--font-jp);margin-bottom:8px}
 .page-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}
-.tag{background:#e8e8e8;color:#666;padding:2px 10px;border-radius:12px;font-size:12px}
+.tag{background:var(--accent-muted);color:var(--accent);padding:2px 10px;border-radius:12px;font-size:12px;border:1px solid var(--accent)}
 .block{margin-bottom:24px}
-.block-text{line-height:1.8;background:#fff;border-radius:6px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.block-text{line-height:1.8;color:var(--text-primary);background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:6px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .block-image{text-align:center}
-.block-image img{max-width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-.caption{margin-top:6px;font-size:12px;color:#777}
-.img-placeholder{background:#f0f0f0;border:2px dashed #ccc;border-radius:4px;padding:32px;color:#aaa;font-size:13px}
+.block-image img{max-width:100%;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.caption{margin-top:6px;font-size:12px;color:var(--text-secondary)}
+.img-placeholder{background:var(--bg-elevated);border:2px dashed var(--border-default);border-radius:6px;padding:32px;color:var(--text-muted);font-size:13px;text-align:center}
 </style>
 </head>
 <body>

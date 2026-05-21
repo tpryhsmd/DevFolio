@@ -26,7 +26,8 @@ contextBridge.exposeInMainWorld('api', {
   onMenuRedo: (cb) => ipcRenderer.on('menu:redo', () => cb()),
 
   // HTML書き出し・マージ
-  exportHtml: (pageIds) => ipcRenderer.invoke('ptf:exportHtml', pageIds),
+  exportHtml: (pageIds, defaultName) => ipcRenderer.invoke('ptf:exportHtml', pageIds, defaultName),
+  openPath: (dirPath) => ipcRenderer.invoke('ptf:openPath', dirPath),
   mergeFromPtf: () => ipcRenderer.invoke('ptf:mergeFromPtf'),
 
   // リスナー解除

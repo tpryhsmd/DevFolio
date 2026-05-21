@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const PtfManager = require('./ptf/ptf-manager');
 
 let mainWindow = null;
@@ -8,6 +9,28 @@ let _autoSaveTimer = null;
 
 // ダブルクリック起動時のファイルパス（Windows）
 let _pendingOpenPath = null;
+
+// --- 最後に開いたファイルの永続化 ---
+
+function getLastOpenedPath() {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'last-opened.json');
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    const { filePath } = JSON.parse(raw);
+    return typeof filePath === 'string' && fs.existsSync(filePath) ? filePath : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastOpenedPath(filePath) {
+  try {
+    const configPath = path.join(app.getPath('userData'), 'last-opened.json');
+    fs.writeFileSync(configPath, JSON.stringify({ filePath }), 'utf-8');
+  } catch {
+    // 書き込み失敗は無視
+  }
+}
 
 // --- ウィンドウ作成 ---
 
@@ -26,11 +49,15 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   mainWindow.webContents.once('did-finish-load', () => {
-    // ファイル関連付けで起動したときは読み込む
     if (_pendingOpenPath) {
+      // ファイル関連付けで起動したときは優先して読み込む
       const fp = _pendingOpenPath;
       _pendingOpenPath = null;
       handleOpenPath(fp);
+    } else {
+      // 前回開いていたファイルを自動読み込み
+      const lastPath = getLastOpenedPath();
+      if (lastPath) handleOpenPath(lastPath);
     }
   });
 
@@ -148,6 +175,7 @@ async function handleOpenPath(filePath) {
     await ptfManager.load(filePath);
     mainWindow.webContents.send('ptf:loaded', ptfManager.getDocument());
     mainWindow.setTitle(`技術ポートフォリオ — ${path.basename(filePath)}`);
+    saveLastOpenedPath(filePath);
   } catch (err) {
     dialog.showErrorBox('読み込みエラー', err.message);
   }
@@ -171,6 +199,7 @@ async function handleSaveAs() {
   try {
     await ptfManager.save(filePath);
     mainWindow.setTitle(`技術ポートフォリオ — ${path.basename(filePath)}`);
+    saveLastOpenedPath(filePath);
   } catch (err) {
     dialog.showErrorBox('保存エラー', err.message);
   }

@@ -15,10 +15,11 @@ contextBridge.exposeInMainWorld('api', {
   addImage: (arrayBuffer, ext) => ipcRenderer.invoke('ptf:addImage', arrayBuffer, ext),
   getImage: (ref) => ipcRenderer.invoke('ptf:getImage', ref),
 
-  // スナップショット
-  saveSnapshot: (label) => ipcRenderer.invoke('ptf:saveSnapshot', label),
-  restoreSnapshot: (snapshotId) => ipcRenderer.invoke('ptf:restoreSnapshot', snapshotId),
-  deleteSnapshot: (snapshotId) => ipcRenderer.invoke('ptf:deleteSnapshot', snapshotId),
+  // バージョン履歴
+  getVersionHistory: () => ipcRenderer.invoke('ptf:getVersionHistory'),
+  restoreVersion: (versionId) => ipcRenderer.invoke('ptf:restoreVersion', versionId),
+  deleteVersion: (versionId) => ipcRenderer.invoke('ptf:deleteVersion', versionId),
+  updateVersionMemo: (versionId, memo) => ipcRenderer.invoke('ptf:updateVersionMemo', versionId, memo),
 
   // イベント受信
   onPtfLoaded: (cb) => ipcRenderer.on('ptf:loaded', (_, doc) => cb(doc)),

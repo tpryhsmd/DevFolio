@@ -68,34 +68,49 @@ class PtfManager {
     this._dirty = false;
   }
 
-  // --- スナップショット ---
+  // --- バージョン履歴 ---
 
-  saveSnapshot(label) {
+  recordVersion(trigger) {
     if (!this._doc) return;
-    const snapshot = {
-      snapshotId: `snap-${Date.now()}`,
-      label: label || new Date().toLocaleString('ja-JP'),
-      savedAt: new Date().toISOString(),
+    const version = {
+      versionId: `ver-${Date.now()}`,
+      trigger, // 'save' | 'export'
+      recordedAt: new Date().toISOString(),
+      memo: '',
       pagesSnapshot: JSON.parse(JSON.stringify(this._doc.pages)),
     };
     this._doc.history = this._doc.history || [];
-    this._doc.history.unshift(snapshot);
-    // 最大20件
-    if (this._doc.history.length > 20) this._doc.history.length = 20;
+    this._doc.history.unshift(version);
+    // 最大50件
+    if (this._doc.history.length > 50) this._doc.history.length = 50;
+  }
+
+  getVersionHistory() {
+    if (!this._doc) return [];
+    return (this._doc.history || []).map(({ versionId, trigger, recordedAt, memo }) => ({
+      versionId, trigger, recordedAt, memo,
+    }));
+  }
+
+  restoreVersion(versionId) {
+    if (!this._doc) return;
+    const ver = (this._doc.history || []).find((v) => v.versionId === versionId);
+    if (!ver) throw new Error('バージョンが見つかりません');
+    this._doc.pages = JSON.parse(JSON.stringify(ver.pagesSnapshot));
     this._dirty = true;
   }
 
-  restoreSnapshot(snapshotId) {
+  deleteVersion(versionId) {
     if (!this._doc) return;
-    const snap = (this._doc.history || []).find((s) => s.snapshotId === snapshotId);
-    if (!snap) throw new Error('スナップショットが見つかりません');
-    this._doc.pages = JSON.parse(JSON.stringify(snap.pagesSnapshot));
+    this._doc.history = (this._doc.history || []).filter((v) => v.versionId !== versionId);
     this._dirty = true;
   }
 
-  deleteSnapshot(snapshotId) {
+  updateVersionMemo(versionId, memo) {
     if (!this._doc) return;
-    this._doc.history = (this._doc.history || []).filter((s) => s.snapshotId !== snapshotId);
+    const ver = (this._doc.history || []).find((v) => v.versionId === versionId);
+    if (!ver) return;
+    ver.memo = memo;
     this._dirty = true;
   }
 

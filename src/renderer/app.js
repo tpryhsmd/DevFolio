@@ -142,8 +142,6 @@ document.getElementById('btn-export-html').addEventListener('click', showExportM
 document.getElementById('btn-merge-ptf').addEventListener('click', mergeFromPtf);
 document.getElementById('history-modal-close').addEventListener('click', closeHistoryModal);
 document.getElementById('history-modal-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeHistoryModal(); });
-document.getElementById('btn-save-snapshot').addEventListener('click', saveSnapshot);
-document.getElementById('snapshot-label-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveSnapshot(); });
 document.getElementById('btn-manage-tags').addEventListener('click', openTagModal);
 document.getElementById('modal-close').addEventListener('click', closeTagModal);
 document.getElementById('modal-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeTagModal(); });
@@ -260,59 +258,55 @@ function reorderBlocks(page) {
 
 // --- バージョン履歴 ---
 
-function openHistoryModal() {
-  renderSnapshotList();
+async function openHistoryModal() {
+  await renderVersionList();
   document.getElementById('history-modal-overlay').style.display = 'flex';
 }
 
 function closeHistoryModal() {
   document.getElementById('history-modal-overlay').style.display = 'none';
-  document.getElementById('snapshot-label-input').value = '';
 }
 
-async function saveSnapshot() {
-  const input = document.getElementById('snapshot-label-input');
-  const label = input.value.trim() || new Date().toLocaleString('ja-JP');
-  await window.api.saveSnapshot(label);
-  input.value = '';
-  // ドキュメントを再取得（historyが更新された）
-  _doc = await window.api.getDocument();
-  renderSnapshotList();
-}
-
-function renderSnapshotList() {
-  const container = document.getElementById('snapshot-list');
+async function renderVersionList() {
+  const container = document.getElementById('version-list');
   container.innerHTML = '';
-  const history = _doc?.history || [];
+  const history = await window.api.getVersionHistory();
+
   if (history.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'snapshot-empty';
-    empty.textContent = 'スナップショットがありません';
+    empty.textContent = '保存または書き出しを行うとバージョンが記録されます';
     container.appendChild(empty);
     return;
   }
-  history.forEach((snap) => {
+
+  history.forEach((ver) => {
     const row = document.createElement('div');
     row.className = 'snapshot-row';
 
     const info = document.createElement('div');
     info.className = 'snapshot-info';
 
-    const label = document.createElement('span');
-    label.className = 'snapshot-label';
-    label.textContent = snap.label;
+    const triggerBadge = document.createElement('span');
+    triggerBadge.className = 'version-trigger-badge' + (ver.trigger === 'export' ? ' export' : '');
+    triggerBadge.textContent = ver.trigger === 'export' ? '書き出し' : '保存';
+    info.appendChild(triggerBadge);
 
     const date = document.createElement('span');
     date.className = 'snapshot-date';
-    date.textContent = new Date(snap.savedAt).toLocaleString('ja-JP');
-
-    const pages = document.createElement('span');
-    pages.className = 'snapshot-pages';
-    pages.textContent = `${snap.pagesSnapshot.length}ページ`;
-
-    info.appendChild(label);
+    date.textContent = new Date(ver.recordedAt).toLocaleString('ja-JP');
     info.appendChild(date);
-    info.appendChild(pages);
+
+    const memo = document.createElement('input');
+    memo.className = 'version-memo-input';
+    memo.type = 'text';
+    memo.placeholder = 'メモを追加…';
+    memo.maxLength = 80;
+    memo.value = ver.memo || '';
+    memo.onblur = async () => {
+      await window.api.updateVersionMemo(ver.versionId, memo.value.trim());
+    };
+    info.appendChild(memo);
 
     const btns = document.createElement('div');
     btns.className = 'snapshot-btns';
@@ -321,11 +315,11 @@ function renderSnapshotList() {
     restoreBtn.textContent = '復元';
     restoreBtn.className = 'snapshot-restore-btn';
     restoreBtn.onclick = async () => {
-      const ok = await showConfirmModal(`「${snap.label}」の状態に復元しますか？\n現在の編集内容は失われます。`, '復元', '#1a6bbf');
+      const dateStr = new Date(ver.recordedAt).toLocaleString('ja-JP');
+      const ok = await showConfirmModal(`${dateStr} の状態に復元しますか？\n現在の編集内容は失われます。`, '復元', '#1a6bbf');
       if (!ok) return;
-      const restoredDoc = await window.api.restoreSnapshot(snap.snapshotId);
+      const restoredDoc = await window.api.restoreVersion(ver.versionId);
       _doc = restoredDoc;
-      // 復元時はundo/redoスタックをクリア
       _undoStack.length = 0;
       _redoStack.length = 0;
       updateUndoRedoBtns();
@@ -338,11 +332,10 @@ function renderSnapshotList() {
     delBtn.textContent = '削除';
     delBtn.className = 'snapshot-del-btn';
     delBtn.onclick = async () => {
-      const ok = await showConfirmModal(`スナップショット「${snap.label}」を削除しますか？`);
+      const ok = await showConfirmModal('このバージョン履歴を削除しますか？');
       if (!ok) return;
-      await window.api.deleteSnapshot(snap.snapshotId);
-      _doc = await window.api.getDocument();
-      renderSnapshotList();
+      await window.api.deleteVersion(ver.versionId);
+      await renderVersionList();
     };
 
     btns.appendChild(restoreBtn);

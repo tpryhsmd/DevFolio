@@ -184,6 +184,7 @@ async function handleOpenPath(filePath) {
 async function handleSave() {
   if (!ptfManager.currentPath) return handleSaveAs();
   try {
+    ptfManager.recordVersion('save');
     await ptfManager.save(ptfManager.currentPath);
   } catch (err) {
     dialog.showErrorBox('保存エラー', err.message);
@@ -197,6 +198,7 @@ async function handleSaveAs() {
   });
   if (canceled) return;
   try {
+    ptfManager.recordVersion('save');
     await ptfManager.save(filePath);
     mainWindow.setTitle(`技術ポートフォリオ — ${path.basename(filePath)}`);
     saveLastOpenedPath(filePath);
@@ -214,6 +216,7 @@ async function handleExportHtml(pageIds, defaultName = 'index') {
   });
   if (canceled || !filePath) return;
   try {
+    ptfManager.recordVersion('export');
     const result = ptfManager.exportHtml(filePath, pageIds);
     return result;
   } catch (err) {
@@ -268,17 +271,19 @@ app.whenReady().then(() => {
     return buf ? buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) : null;
   });
 
-  ipcMain.handle('ptf:saveSnapshot', (_, label) => {
-    ptfManager.saveSnapshot(label);
-  });
+  ipcMain.handle('ptf:getVersionHistory', () => ptfManager.getVersionHistory());
 
-  ipcMain.handle('ptf:restoreSnapshot', (_, snapshotId) => {
-    ptfManager.restoreSnapshot(snapshotId);
+  ipcMain.handle('ptf:restoreVersion', (_, versionId) => {
+    ptfManager.restoreVersion(versionId);
     return ptfManager.getDocument();
   });
 
-  ipcMain.handle('ptf:deleteSnapshot', (_, snapshotId) => {
-    ptfManager.deleteSnapshot(snapshotId);
+  ipcMain.handle('ptf:deleteVersion', (_, versionId) => {
+    ptfManager.deleteVersion(versionId);
+  });
+
+  ipcMain.handle('ptf:updateVersionMemo', (_, versionId, memo) => {
+    ptfManager.updateVersionMemo(versionId, memo);
   });
 
   // Phase 4のIPC（メニューからも呼べるようUIからも残す）

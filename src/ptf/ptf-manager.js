@@ -138,27 +138,6 @@ class PtfManager {
 
     const outputDir = path.dirname(filePath);
 
-    // 使用画像のみimagesディレクトリにコピー
-    const usedRefs = new Set();
-    pages.forEach((page) => {
-      (page.blocks || []).forEach((block) => {
-        if (block.type === 'image' && block.data.imageRef) {
-          usedRefs.add(block.data.imageRef);
-        }
-      });
-    });
-
-    if (usedRefs.size > 0) {
-      const imgDir = path.join(outputDir, 'images');
-      if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir, { recursive: true });
-      for (const ref of usedRefs) {
-        const entry = this._imagePool.get(ref);
-        if (entry) {
-          fs.writeFileSync(path.join(imgDir, `${ref}.${entry.ext}`), entry.buffer);
-        }
-      }
-    }
-
     // 全ページを1つのHTMLにまとめて出力
     const docTitle = doc.meta?.title || '技術ポートフォリオ';
     const html = buildSingleHtml({ pages, tagMap, docTitle, imagePool: this._imagePool });
@@ -291,8 +270,10 @@ function buildSingleHtml({ pages, tagMap, docTitle, imagePool }) {
         } else if (block.type === 'image') {
           const ref = block.data.imageRef || '';
           const entry = ref ? imagePool.get(ref) : null;
+          const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml' };
+          const mime = entry ? (mimeMap[entry.ext] || 'image/png') : '';
           const imgTag = entry
-            ? `<img src="images/${ref}.${entry.ext}" alt="${_esc(block.data.alt || '')}">`
+            ? `<img src="data:${mime};base64,${entry.buffer.toString('base64')}" alt="${_esc(block.data.alt || '')}">`
             : '<div class="img-placeholder">（画像なし）</div>';
           const caption = block.data.caption
             ? `<p class="caption">${_esc(block.data.caption)}</p>`
